@@ -1,0 +1,123 @@
+#!/bin/bash
+#natsushi_trash=/home/trash/
+
+
+#環境変数$natsushi_trashが定義されてなかったら。
+if [ -z $natsushi_trash ]; then
+    echo -e "message from script \"$0\" :"
+    echo -e "\tthe variable \"natsushi_trash\" is undefined."
+    echo -e "\tplease set before using this script.\n";
+    exit 1;
+fi
+
+
+#ゴミ箱フォルダーがなかったら。
+if [ ! -d $natsushi_trash ]; then
+    echo -e "message from script \"$0\" :"
+    echo -e "\tdoes not exist \"$natsushi_trash\". please make."
+    exit 1;
+fi
+
+
+#destination_dir=$natsushi_trash`date +"%Y%m%d"`;
+#destination_dir=$natsushi_trash`date +"%Y%m%d%H%M%S"`;
+#destination_dir=$natsushi_trash`date +"%Y_%m%d_%H%M"`;
+destination_dir=$natsushi_trash/`date +"%m%d"`/`date +"%H%M_%S"`/;
+#環境変数の最後に「/」がついてると２重になってしまうのでそれを回避。
+destination_dir=`echo $destination_dir | sed 's/\/\//\//g'`
+
+rireki_file=$natsushi_trash/`date +"%m%d"`rireki
+
+temporary_file="/tmp/natsushi_myrm_temporary_file"
+
+
+echo -e "**********************************************************************"
+echo -e "this is safety rm script.\ni just move to destination dir.";
+echo -e "destination dir is \"$destination_dir\"";
+echo -e "**********************************************************************\n"
+
+
+#引数が足りないとき。
+if [ $# -eq 0 ]; then
+    exefile_basename=`basename $0`;
+    echo -e "message from script \"$0\" :"
+    echo -e "\tusage : %$exefile_basename \"file(s) or dir(s) name\""
+    exit 1;
+fi
+
+
+#削除候補を表示。
+del_num=0
+for i in "$@"
+  do
+  echo $i;
+  del_num=$[$del_num+1];
+done
+#本当に削除していいのか確かめる。
+echo -e "\nmessage from script \"$0\" :"
+echo -e "\treally remove $del_num files? [y or n]\n\t(i just move to \"$destination_dir\")";
+read yesno;
+#testは-aオプションでアンドになる。
+if [ $yesno = 'y' -o $yesno = 'ye' -o $yesno = 'yes' ]; then
+    #何もせず、if文以降の処理へ。
+    echo -n;
+else
+    #スクリプト終了。
+    echo -e "\nmessage from script \"$0\" :"
+    echo -e "\ti do nothing";
+    exit 0;
+fi
+#以下は間違い。これだと何も入力せずにEnterしても通ってしまう。
+#原因は変数が定義されてない状態で'!='で調べてもtestコマンドがエラーになってしまうから
+#だと思う。
+#if [ $yesno != 'y' -a $yesno != 'ye' -a $yesno != 'yes' ]; then
+#    echo "i do nothing";
+#    exit;
+#fi
+#echo;
+
+
+#移動先がない場合。
+if [ ! -d $destination_dir ]; then #移動先のディレクトリがない場合。
+    echo -e "message from script \"$0\" :"
+    echo -e "\tdestination directory does not exist. i make it."
+    mkdir -p $destination_dir;
+    if [ $? -eq 0 ]; then
+        echo -e "message from script \"$0\" :"
+        echo -e "\tmake directory succeed."
+    else
+        echo -e "message from script \"$0\" :"
+        echo -e "\terror. cann't make directory \"$destination_dir\"."
+        exit 1;
+    fi
+    echo;
+fi
+
+
+#移動。
+echo -e "message from script \"$0\" :"
+echo -e "\tmv start."
+#履歴に書き込む。
+date +"date : %Y年 %m月%d日 %H時%M分%S秒" >> $rireki_file
+echo -e "pwd : $PWD" >> $rireki_file
+exefile_basename=`basename $0`
+echo -e "command line : $exefile_basename $@" >> $rireki_file
+#実際に移動。
+/bin/mv -v "$@" $destination_dir 2> $temporary_file | tee -a $rireki_file
+#エラーが起きたかどうか。
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    error_num=`wc -l $temporary_file | awk '{print $1}'`
+    echo -e "\nerror from script \"$0\" :"
+    echo -e "\t****************************************"
+    echo -e "\t********** $error_num errors occurred. **********"
+    cat $temporary_file
+    echo -e "\t****************************************\n"
+fi
+
+echo -e "\n" >> $rireki_file
+\rm $temporary_file
+
+
+#終了。
+echo -e "message from script \"$0\" :"
+echo -e "\tmv end."
