@@ -1,7 +1,5 @@
 #!/bin/bash
-
-
-#どこかでnatsushi_trash=/home/trash/を定義しておくこと。
+#natsushi_trash=/home/trash/
 
 
 #環境変数$natsushi_trashが定義されてなかったら。
